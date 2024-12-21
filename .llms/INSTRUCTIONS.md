@@ -24,3 +24,17 @@ https://docs.anthropic.com/en/docs/build-with-claude/tool-use
 ## Task
 Our task is to design, develop, and publish this application. We should use good practice and
 well defined design patterns to develop the APIs.
+
+We will use Claude 3 Opus for production, Claude 3.5 Sonnet for stable testing, and Claude 3.5 Haiku for development.
+
+## Special notes
+We should be mindful of token costs. As of writing this, this costs for the models are as follows:
+- Claude 3 Opus
+    - Input: $15 / MTok
+    - Output: $75 / MTok
+- Claude 3.5 Sonnet
+    - Input: $3 / MTok
+    - Output: $15 / Mtok
+- Claude 3.5 Haiku
+    - Input: $0.80 / MTok
+    - Output: $4 / Mtok

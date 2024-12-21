@@ -1,6 +1,7 @@
 import anthropic
 import game_interface.game_interface
 import os
+import json
 
 class ToolParameter:
     def __init__(self, name, type, description):
@@ -14,11 +15,24 @@ class ToolParameter:
             "type": self.type,
             "description": self.description
         }
+    
+    def to_json(self):
+        return json.dumps({
+            "name": " + self.name + ",
+            "type": " + self.type + ", 
+            "description": " + self.description + " 
+        }, indent=4)
 
 class Tool:
     def __init__(self, name, description, parameters):
         self.name = name
         self.description = description
+
+        if not isinstance(parameters, list):
+            raise ValueError("Parameters must be a list of ToolParameter objects. Got: " + str(parameters))
+        if len(parameters) > 0 and not isinstance(parameters[0], ToolParameter):
+            raise ValueError("Parameters must be a list of ToolParameter objects. Got: " + str(parameters))
+
         self.parameters = parameters
 
     def to_dict(self):
@@ -26,10 +40,18 @@ class Tool:
             "name": self.name,
             "description": self.description,
             "parameters": self.parameters
-        }    
+        }
+
+    def to_json(self):
+        return json.dumps({
+            "name": self.name,
+            "description": self.description,
+            "parameters": [param.to_json() for param in self.parameters]
+        }, indent=4)
 
 class ClaudeClient:
-    def __init__(self):
+    def __init__(self, model):
+        self.model = model
         self.api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required.")
@@ -92,13 +114,12 @@ class ClaudeClient:
         return "Tool executed successfully."
     
     def get_tool_descriptions(self):
-        return [tool.to_dict.__str__ for tool in self.tools]
+        return [tool.to_json() for tool in self.tools]
 
     def send_prompt_to_claude(self, prompt):
-        
-        """
+
         response = self.anthropic.messages.create(
-            model="claude-3-opus-20240229",
+            model=self.model,
             max_tokens=1024,
             messages=[
                 {
@@ -106,17 +127,10 @@ class ClaudeClient:
                     "content": prompt
                 }
             ],
-            tools=get_tool_descriptions(self)
+            tools=self.get_tool_descriptions()
         )
         return response
-        """
-
-
-if __name__ == "__main__":
-    client = ClaudeClient()
-    tool_descriptions = client.get_tool_descriptions()
-    print("Available tools:")
-    print(tool for tool in tool_descriptions)
+    
 
     """
     prompt = "Take a screenshot of the current game view and save it as 'initial_view.png'."
