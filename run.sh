@@ -1,1 +1,1 @@
-python main.py -m 0
+python main.py -m 0-1

@@ -1,12 +1,17 @@
 import pyautogui
+import os
 
-_all_ = ['take_screenshot', 'press_key', 'hold_key', 'move_mouse', 'click_mouse']
+# _all_ = ['take_screenshot', 'press_key', 'hold_key', 'move_mouse', 'click_mouse']
 
 
 def take_screenshot(filename="screenshot.png"):
     """Takes a screenshot of the screen and saves it to the specified filename."""
     screenshot = pyautogui.screenshot()
-    screenshot.save(filename)
+
+    # Create output directory if it doesn't exist
+    if not os.path.exists("output"):
+        os.makedirs("output")
+    screenshot.save("output/"+filename)
     print(f"Screenshot saved as {filename}")
 
 def press_key(key):

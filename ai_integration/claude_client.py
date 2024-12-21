@@ -1,9 +1,21 @@
 import anthropic
-import game_interface.game_interface
+import game_interface.game_interface as interface
 import os
 import json
+from simple_logger.logger import SimpleLogger
+
+
+LOGGER = SimpleLogger(__name__, "claude_client.log")
 
 class ToolParameter:
+    """
+    
+    One object in the input_schema value for describing tools
+
+    "type": "the type of input (eg object, string, integer)",
+    "description": "the properties of the input (useful for objects)",
+    
+    """
     def __init__(self, name, type, description):
         self.name = name
         self.type = type
@@ -11,19 +23,30 @@ class ToolParameter:
 
     def to_dict(self):
         return {
-            "name": self.name,
+            # "name": self.name,
             "type": self.type,
             "description": self.description
         }
     
     def to_json(self):
         return json.dumps({
-            "name": " + self.name + ",
-            "type": " + self.type + ", 
-            "description": " + self.description + " 
-        }, indent=4)
+            "name": self.name,
+            "type": self.type, 
+            "description": self.description 
+        }, indent=2)
 
 class Tool:
+    """
+
+    As specified by the anthropic docs: https://docs.anthropic.com/en/docs/build-with-claude/tool-use
+
+    {
+    "name": "The name of the tool. Must match the regex ^[a-zA-Z0-9_-]{1,64}$",
+    "description": "A detailed plaintext description of what the tool does, when it should be used, and how it behaves.",
+    "input_schema": "A JSON Schema object defining the expected parameters for the tool."
+    }
+
+    """
     def __init__(self, name, description, parameters):
         self.name = name
         self.description = description
@@ -39,23 +62,31 @@ class Tool:
         return {
             "name": self.name,
             "description": self.description,
-            "parameters": self.parameters
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    param.name: param.to_dict() for param in self.parameters
+                },
+                "required": [param.name for param in self.parameters]
+            }
         }
 
     def to_json(self):
-        return json.dumps({
-            "name": self.name,
-            "description": self.description,
-            "parameters": [param.to_json() for param in self.parameters]
-        }, indent=4)
+        return json.dumps(self.to_dict(), indent=2)
 
 class ClaudeClient:
+
     def __init__(self, model):
+
+        if model == "gemini-2.0-flash":
+            raise ValueError("Gemini 2.0 Flash is not supported by this client yet.")
+
         self.model = model
         self.api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required.")
         self.anthropic = anthropic.Anthropic(api_key=self.api_key)
+        self.next_toolset = []
         self.tools = [
             Tool(
                 "take_screenshot",
@@ -97,27 +128,35 @@ class ClaudeClient:
         ]
            
 
-    def execute_tool(self, tool_name, parameters):
-        print(f"Executing tool: {tool_name} with parameters: {parameters}")
-        if tool_name == "take_screenshot":
-            game_interface.take_screenshot(**parameters)
-        elif tool_name == "press_key":
-            game_interface.press_key(**parameters)
-        elif tool_name == "hold_key":
-            game_interface.hold_key(**parameters)
-        elif tool_name == "move_mouse":
-            game_interface.move_mouse(**parameters)
-        elif tool_name == "click_mouse":
-            game_interface.click_mouse(**parameters)
-        else:
-            return f"Tool '{tool_name}' not found."
-        return "Tool executed successfully."
+    def execute_tools(self):
+        tool_map = {
+            "take_screenshot": interface.take_screenshot,
+            "press_key": interface.press_key,
+            "hold_key": interface.hold_key,
+            "move_mouse": interface.move_mouse,
+            "click_mouse": interface.click_mouse
+        }
+
+        for tool in self.next_toolset:
+            tool_name = tool.name
+            parameters = tool.input
+            tooluse_id = tool.id
+            print(f"Executing tool: {tool_name} with parameters: {parameters}")
+            
+            if tool_name not in tool_map:
+                self.next_toolset = []
+                return f"Tool '{tool_name}' not found."
+                
+            tool_map[tool_name](**parameters)
+            
+        self.next_toolset = []    
+        return "Tools executed successfully."
     
     def get_tool_descriptions(self):
-        return [tool.to_json() for tool in self.tools]
+        return [tool.to_dict() for tool in self.tools]
 
     def send_prompt_to_claude(self, prompt):
-
+        LOGGER.debug(self.get_tool_descriptions()[0])
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=1024,
@@ -129,11 +168,27 @@ class ClaudeClient:
             ],
             tools=self.get_tool_descriptions()
         )
-        return response
-    
 
-    """
-    prompt = "Take a screenshot of the current game view and save it as 'initial_view.png'."
-    response = claude_client.send_prompt_to_claude(prompt)
-    print(f"Claude's response: {response}")
-    """
+        LOGGER.debug(f"Response: {response}\n")
+
+        response_thoughts = response.content[0].text
+        LOGGER.debug(f"Thoughts: {response_thoughts}\n")
+        self.next_toolset = response.content[1:]
+        return self.next_toolset
+    
+def fetchModels():
+    client = anthropic.Anthropic()
+    all_models = client.models.list(limit=20)
+    
+    sonnet = next((model for model in all_models.data if "sonnet" in model.id.lower()), None)
+    haiku = next((model for model in all_models.data if "haiku" in model.id.lower()), None)
+    opus = next((model for model in all_models.data if "opus" in model.id.lower()), None)
+    
+    if not all([sonnet, haiku, opus]):
+        missing = []
+        if not sonnet: missing.append("Sonnet")
+        if not haiku: missing.append("Haiku")
+        if not opus: missing.append("Opus")
+        raise ValueError(f"Could not find models: {', '.join(missing)}")
+    
+    return (sonnet, haiku, opus)
