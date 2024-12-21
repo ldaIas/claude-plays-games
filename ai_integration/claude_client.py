@@ -1,5 +1,5 @@
 import anthropic
-from game_interface import game_interface
+import game_interface.game_interface
 import os
 
 class ClaudeClient:
