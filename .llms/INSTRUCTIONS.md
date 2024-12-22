@@ -38,3 +38,6 @@ We should be mindful of token costs. As of writing this, this costs for the mode
 - Claude 3.5 Haiku
     - Input: $0.80 / MTok
     - Output: $4 / Mtok
+
+If you or the user express a desire to remember something, make note of it in ./llms/MEMORIES.md.
+Read through MEMORIES to refresh yourself.

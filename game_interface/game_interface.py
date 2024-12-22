@@ -1,8 +1,10 @@
 import base64
 from io import BytesIO
 import pyautogui
+from PIL import ImageGrab
 import os
 from simple_logger.logger import SimpleLogger
+from functools import partial
 
 # _all_ = ['take_screenshot', 'press_key', 'hold_key', 'move_mouse', 'click_mouse']
 
@@ -10,7 +12,7 @@ LOGGER = SimpleLogger(__name__, log_file="game_interface.log")
 
 def take_screenshot(filename="screenshot.png"):
     """Takes a screenshot of the screen and saves it to the specified filename."""
-    screenshot = pyautogui.screenshot()
+    screenshot = ImageGrab.grab(all_screens=False)
 
     # Create output directory if it doesn't exist
     if not os.path.exists("output"):
@@ -18,13 +20,16 @@ def take_screenshot(filename="screenshot.png"):
     screenshot.save("output/"+filename)
     LOGGER.debug(f"Screenshot saved as {filename}")
 
-      # Convert PIL Image to base64 string
+    # Convert PIL Image to base64 string
     buffered = BytesIO()
     screenshot.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
 
     # Return the image in a content[] block for returning to Claude
-    content = {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_str}}
+    content = {
+        "type": "tool_result",
+        "content": [{"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_str}}]
+    }
     
     return content
 

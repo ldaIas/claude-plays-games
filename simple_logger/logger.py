@@ -6,6 +6,7 @@ Primary output target is an sh terminal
 import logging
 import sys
 import inspect
+import re
 
 class SimpleLogger:
 
@@ -28,11 +29,20 @@ class SimpleLogger:
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
 
+        # Make it easy to see new log sessions
+        logger.debug("\n--------------------------------------------------" * 2)
+
         return logger
     
 
     def _log_with_location(self, level, message, *args, **kwargs):
         caller = inspect.getframeinfo(inspect.currentframe().f_back.f_back)
+        
+        if isinstance(message, str):
+            # Look for PNG header and capture everything until the next quote
+            base64_pattern = r'iVBORw0KGgo[^\']*'
+            message = re.sub(base64_pattern, '[PNG DATA TRUNCATED]', message)
+
         formatted_message = f"{caller.filename}:{caller.lineno} - {message}"
         getattr(self.logger_instance, level)(formatted_message, *args, **kwargs)
 

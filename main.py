@@ -60,45 +60,40 @@ def main():
        for alias in info["aliases"]:
            model_lookup[alias] = info["model_name"]
     
-    LOGGER.debug(f"input model: {input_model}")
-    LOGGER.debug(f"model lookup: {model_lookup}")
     selected_model = model_lookup.get(input_model)
-    LOGGER.debug(f"selected model: {selected_model}")
     ai_client = ai_integration.claude_client.ClaudeClient(selected_model)
-
     LOGGER.debug(f"Client model: {ai_client.model}")
 
     
     prompt = """
-             Take a screenshot of the current view and save it as 'initial_view.png'. When you have it, describe the image
-             and end the app.
+             This first run is a test run. You should take a screenshot of the game and describe the game state.
+             Once that is done, finish flying.
              """
     
-    response = ai_client.send_prompt_to_claude(prompt)
-    LOGGER.debug(f"Claude's tool response: {response}")
+    next_tool_set = ai_client.send_prompt_to_claude(prompt)
+    LOGGER.debug(f"Claude's tool response: {next_tool_set}")
 
-    while ai_client.to_continue_flying():
+    # While we should continue, execute tools and re prompt claude
+    loop_limit = 3
+    for _ in range(loop_limit + 1):
+        if not ai_client.to_continue_flying():
+            break
+
         execution_results = ai_client.execute_tools()
 
         # Send results of tool execution back for next steps
         prompt_content = []
         for result in execution_results:
-            prompt_content.append(
-                result["result"]
-            )
-            prompt_content.append(
-                {
-                    "type": "text",
-                    "text": f"These are the results for tool use with id {result["tooluse_id"]}"
-                }
-            )
+            prompt_content.append(result)
         
         LOGGER.debug(f"Prompt content: {prompt_content}")
         ai_client.send_prompt_to_claude(prompt_content)
+        ai_client.clear_results()
     
 
-    LOGGER.debug("Finished execution")
-
-
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        LOGGER.error(f"A critical error occurred: {e}")
+        raise e

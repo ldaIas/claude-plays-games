@@ -3,6 +3,7 @@ import game_interface.game_interface as interface
 import os
 import json
 from simple_logger.logger import SimpleLogger
+from ai_integration.conversation_cache import ConversationCache
 
 
 LOGGER = SimpleLogger(__name__, log_file="claude_client.log")
@@ -90,6 +91,7 @@ class ClaudeClient:
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required.")
         self.anthropic = anthropic.Anthropic(api_key=self.api_key)
+        self.conversation_cache = ConversationCache()
         self.tools = [
             Tool(
                 "take_screenshot",
@@ -141,6 +143,12 @@ class ClaudeClient:
     def stop_flying(self):
         self.continue_flying = False
 
+        return {
+            "type": "tool_result",
+            "content": "stopped flying."
+        }
+        
+
     def execute_tools(self):
         tool_map = {
             "take_screenshot": interface.take_screenshot,
@@ -160,12 +168,14 @@ class ClaudeClient:
             if tool_name not in tool_map:
                 self.next_toolset = []
                 raise ValueError(f"Tool '{tool_name}' not found.")
-                
+
             tool_res = tool_map[tool_name](**parameters)
-            self.toolset_results.append({
-                "tooluse_id": tooluse_id,
-                "result": tool_res
-            })
+            return_schema = {
+                "type": tool_res["type"], 
+                "tool_use_id": tooluse_id, 
+                "content": tool_res["content"]
+            }
+            self.toolset_results.append(return_schema)
             
         self.next_toolset = []    
         LOGGER.debug(f"Toolset results: {self.toolset_results}")
@@ -175,25 +185,49 @@ class ClaudeClient:
         return [tool.to_dict() for tool in self.tools]
 
     def send_prompt_to_claude(self, prompt):
-        LOGGER.debug(f"Prompting claude: {prompt}\n")
+        """
+        Sends the given prompt as input to Claude and returns the response.
+
+        Sets the next set of tools to execute on the instance
+        Resets the results from the last tools execution
+
+        :param prompt: The prompt to send to Claude.
+        :return: The response from Claude.
+        """
+
+        new_message = { "role": "user", "content": prompt }
+        LOGGER.debug(f"Sending prompt to cache: {new_message}")
+        self.conversation_cache.add_message(new_message)
+        previous_messages = self.conversation_cache.get_messages()
+
+        LOGGER.debug(f"Prompting claude with messages: {previous_messages}")
+
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=1024,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            system=
+                """
+                You are a pilot in the French Airforce in the game War Thunder. You have an array of aircraft at your disposal, 
+                from the Mirage F1 to the Mirage 2000and even the Mirage 4000. You are given the tools needed to fly the aircraft. 
+                Your responsibility is to complete the missionobjective, which is to eleminate enemies. Enemies are marked by red markers 
+                and names while allies are marked in blue. You will fly until the mission is over at which point you will stop.
+                """,
+            messages=previous_messages,
+            tool_choice={"type": "any"},
             tools=self.get_tool_descriptions()
         )
 
-        LOGGER.debug(f"Response: {response}\n")
+        LOGGER.debug(f"Claude Response: {response}")
 
-        response_thoughts = response.content[0].text
-        LOGGER.debug(f"Thoughts: {response_thoughts}\n")
-        self.next_toolset = response.content[1:]
+        response_as_msg_dict = {"role": response.role, "content": response.content}
+        self.conversation_cache.add_message(response_as_msg_dict)
+        LOGGER.debug(f"Adding claude response to message cache: {response_as_msg_dict}")
+
+        self.next_toolset = response.content
         return self.next_toolset
+    
+    def clear_results(self):
+        self.toolset_results = []
     
 def fetchModels():
     client = anthropic.Anthropic()
