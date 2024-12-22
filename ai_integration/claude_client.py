@@ -143,6 +143,8 @@ class ClaudeClient:
     def stop_flying(self):
         self.continue_flying = False
 
+        LOGGER.debug(f"Stopping flight.")
+
         return {
             "type": "tool_result",
             "content": "stopped flying."
@@ -163,7 +165,7 @@ class ClaudeClient:
             tool_name = tool.name
             parameters = tool.input
             tooluse_id = tool.id
-            LOGGER.debug(f"Executing tool {tooluse_id}: {tool_name} with parameters: {parameters}")
+            LOGGER.info(f"Executing tool {tooluse_id}: {tool_name} with parameters: {parameters}")
             
             if tool_name not in tool_map:
                 self.next_toolset = []
@@ -200,7 +202,7 @@ class ClaudeClient:
         self.conversation_cache.add_message(new_message)
         previous_messages = self.conversation_cache.get_messages()
 
-        LOGGER.debug(f"Prompting claude with messages: {previous_messages}")
+        LOGGER.info(f"Prompting claude with messages: {previous_messages}")
 
         response = self.anthropic.messages.create(
             model=self.model,
@@ -221,7 +223,7 @@ class ClaudeClient:
 
         response_as_msg_dict = {"role": response.role, "content": response.content}
         self.conversation_cache.add_message(response_as_msg_dict)
-        LOGGER.debug(f"Adding claude response to message cache: {response_as_msg_dict}")
+        LOGGER.info(f"Adding claude response to message cache: {response_as_msg_dict}")
 
         self.next_toolset = response.content
         return self.next_toolset
