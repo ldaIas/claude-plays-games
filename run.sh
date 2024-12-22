@@ -1,1 +1,1 @@
-python main.py -m 1
+python main.py -m 1 -ll "DEBUG"

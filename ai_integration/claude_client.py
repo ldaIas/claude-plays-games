@@ -4,6 +4,7 @@ import os
 import json
 from simple_logger.logger import SimpleLogger
 from ai_integration.conversation_cache import ConversationCache
+from user_interface.user_interface import print_claude_response
 
 
 LOGGER = SimpleLogger(__name__, log_file="claude_client.log")
@@ -132,7 +133,12 @@ class ClaudeClient:
             ),
             Tool(
                 "stop_game",
-                "Stops the game. Should be used when there is no action left to take.",
+                "Stops the game. Should be used when there is no action left to take in the game/mission.",
+                []
+            ),
+            Tool(
+                "no_op",
+                "Does nothing. Used when no action is required, usually when the game has ended. Explain your reasoning for using this tool when chosen.",
                 []
             )
         ]
@@ -158,13 +164,14 @@ class ClaudeClient:
             "hold_key": interface.hold_key,
             "move_mouse": interface.move_mouse,
             "click_mouse": interface.click_mouse,
-            "stop_game": self.stop_flying
+            "stop_game": self.stop_flying,
+            "no_op": lambda: None
         }
 
         for tool in self.next_toolset:
-            tool_name = tool.name
-            parameters = tool.input
-            tooluse_id = tool.id
+            tool_name = tool['name']
+            parameters = tool['input']
+            tooluse_id = tool['id']
             LOGGER.info(f"Executing tool {tooluse_id}: {tool_name} with parameters: {parameters}")
             
             if tool_name not in tool_map:
@@ -210,12 +217,14 @@ class ClaudeClient:
             system=
                 """
                 You are a pilot in the French Airforce in the game War Thunder. You have an array of aircraft at your disposal, 
-                from the Mirage F1 to the Mirage 2000and even the Mirage 4000. You are given the tools needed to fly the aircraft. 
-                Your responsibility is to complete the missionobjective, which is to eleminate enemies. Enemies are marked by red markers 
+                from the Mirage F1 to the Mirage 2000 and even the Mirage 4000. You are given the tools needed to fly the aircraft. 
+                Your responsibility is to complete the mission objective, which is to eleminate enemies. Enemies are marked by red markers 
                 and names while allies are marked in blue. You will fly until the mission is over at which point you will stop.
+                You will recieve images of the game and you will need to respond to them as necessary. Outline a brief description of your thoughts
+                after each image you recieve.
                 """,
             messages=previous_messages,
-            tool_choice={"type": "any"},
+            tool_choice={"type": "auto"},
             tools=self.get_tool_descriptions()
         )
 
@@ -225,9 +234,15 @@ class ClaudeClient:
         self.conversation_cache.add_message(response_as_msg_dict)
         LOGGER.info(f"Adding claude response to message cache: {response_as_msg_dict}")
 
-        self.next_toolset = response.content
+        self.next_toolset = [cont.model_dump() for cont in response.content if cont.model_dump()['type'] == 'tool_use']
+        self.tool_thoughts = [cont.model_dump() for cont in response.content if cont.model_dump()['type'] == 'text']
+        if (len(self.tool_thoughts)) == 0:
+            self.tool_thoughts = [{"text": "<no thoughts for this action>"}]
+        print_claude_response(self.tool_thoughts[0]['text'])
+
+        LOGGER.debug(f"Next toolset: {self.next_toolset}")
         return self.next_toolset
-    
+
     def clear_results(self):
         self.toolset_results = []
     

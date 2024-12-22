@@ -24,10 +24,11 @@ class SimpleLogger:
             file_handler = logging.FileHandler(log_file)
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
-
-        stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
+        else:
+            # If no log file is specified, use StreamHandler to output to stdout
+            stream_handler = logging.StreamHandler(sys.stdout)
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
 
         # Make it easy to see new log sessions
         logger.debug("\n--------------------------------------------------" * 2)
@@ -59,3 +60,21 @@ class SimpleLogger:
         self._log_with_location('error', message, *args, **kwargs)
 
 
+    def parse_log_level(level_str):
+        """Convert string log level to logging constant"""
+        level_str = level_str.upper()
+        level_map = {
+            'DEBUG': logging.DEBUG,
+            'INFO': logging.INFO,
+            'WARNING': logging.WARNING,
+            'ERROR': logging.ERROR,
+            'CRITICAL': logging.CRITICAL
+        }
+        if level_str not in level_map:
+            raise ValueError(f"Invalid log level: {level_str}. Valid levels are: {', '.join(level_map.keys())}")
+        return level_map[level_str]
+
+    def setup_root_logger(log_level):
+        """Configure the root logger with the specified level"""
+        root_logger = logging.getLogger()
+        root_logger.setLevel(log_level)

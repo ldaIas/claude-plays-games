@@ -3,6 +3,7 @@ import ai_integration.claude_client
 import game_interface.game_interface
 from simple_logger.logger import SimpleLogger
 
+
 LOGGER = SimpleLogger(__name__, log_file="main.log")
 
 def main():
@@ -15,7 +16,12 @@ def main():
     model_choices_flat = [opt for choice_series in model_input_choices for opt in choice_series]
     parser = argparse.ArgumentParser(description='Run the game with a specified model.')
     parser.add_argument('-m', '--model', type=str, choices=model_choices_flat, help='Model to use (0: dev, 1: stable, 2: prod)')
+    parser.add_argument('-ll', '--log-level', type=str, choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO", help='Set the logging level')
     args = parser.parse_args()
+
+    # Setup logger giving input log level
+    log_level = SimpleLogger.parse_log_level(args.log_level)
+    SimpleLogger.setup_root_logger(log_level)
 
     input_model = args.model
     if input_model is None:
@@ -64,9 +70,11 @@ def main():
     ai_client = ai_integration.claude_client.ClaudeClient(selected_model)
     LOGGER.debug(f"Client model: {ai_client.model}")
 
+
     
     prompt = """
              This first run is a test run. You should take a screenshot of the game and describe the game state.
+             When you recieve the image, give your thoughts and understanding of it.
              Once that is done, finish flying.
              """
     
