@@ -5,7 +5,7 @@ import json
 from simple_logger.logger import SimpleLogger
 
 
-LOGGER = SimpleLogger(__name__, "claude_client.log")
+LOGGER = SimpleLogger(__name__, log_file="claude_client.log")
 
 class ToolParameter:
     """
@@ -80,13 +80,16 @@ class ClaudeClient:
 
         if model == "gemini-2.0-flash":
             raise ValueError("Gemini 2.0 Flash is not supported by this client yet.")
+        
+        self.next_toolset = []
+        self.toolset_results = []
+        self.continue_flying = True
 
         self.model = model
         self.api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required.")
         self.anthropic = anthropic.Anthropic(api_key=self.api_key)
-        self.next_toolset = []
         self.tools = [
             Tool(
                 "take_screenshot",
@@ -124,9 +127,19 @@ class ClaudeClient:
                 [
                     ToolParameter("button", "string", "The mouse button to click ('left', 'right', or 'middle'). Optional, defaults to 'left'.")
                 ]
+            ),
+            Tool(
+                "stop_game",
+                "Stops the game. Should be used when there is no action left to take.",
+                []
             )
         ]
+
+    def to_continue_flying(self):
+        return self.continue_flying
            
+    def stop_flying(self):
+        self.continue_flying = False
 
     def execute_tools(self):
         tool_map = {
@@ -134,29 +147,35 @@ class ClaudeClient:
             "press_key": interface.press_key,
             "hold_key": interface.hold_key,
             "move_mouse": interface.move_mouse,
-            "click_mouse": interface.click_mouse
+            "click_mouse": interface.click_mouse,
+            "stop_game": self.stop_flying
         }
 
         for tool in self.next_toolset:
             tool_name = tool.name
             parameters = tool.input
             tooluse_id = tool.id
-            print(f"Executing tool: {tool_name} with parameters: {parameters}")
+            LOGGER.debug(f"Executing tool {tooluse_id}: {tool_name} with parameters: {parameters}")
             
             if tool_name not in tool_map:
                 self.next_toolset = []
-                return f"Tool '{tool_name}' not found."
+                raise ValueError(f"Tool '{tool_name}' not found.")
                 
-            tool_map[tool_name](**parameters)
+            tool_res = tool_map[tool_name](**parameters)
+            self.toolset_results.append({
+                "tooluse_id": tooluse_id,
+                "result": tool_res
+            })
             
         self.next_toolset = []    
-        return "Tools executed successfully."
+        LOGGER.debug(f"Toolset results: {self.toolset_results}")
+        return self.toolset_results
     
     def get_tool_descriptions(self):
         return [tool.to_dict() for tool in self.tools]
 
     def send_prompt_to_claude(self, prompt):
-        LOGGER.debug(self.get_tool_descriptions()[0])
+        LOGGER.debug(f"Prompting claude: {prompt}\n")
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=1024,

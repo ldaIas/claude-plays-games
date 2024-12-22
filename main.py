@@ -69,12 +69,35 @@ def main():
     LOGGER.debug(f"Client model: {ai_client.model}")
 
     
-    prompt = "Take a screenshot of the current view and save it as 'initial_view.png'."
+    prompt = """
+             Take a screenshot of the current view and save it as 'initial_view.png'. When you have it, describe the image
+             and end the app.
+             """
+    
     response = ai_client.send_prompt_to_claude(prompt)
     LOGGER.debug(f"Claude's tool response: {response}")
 
-    ai_client.execute_tools()
+    while ai_client.to_continue_flying():
+        execution_results = ai_client.execute_tools()
+
+        # Send results of tool execution back for next steps
+        prompt_content = []
+        for result in execution_results:
+            prompt_content.append(
+                result["result"]
+            )
+            prompt_content.append(
+                {
+                    "type": "text",
+                    "text": f"These are the results for tool use with id {result["tooluse_id"]}"
+                }
+            )
+        
+        LOGGER.debug(f"Prompt content: {prompt_content}")
+        ai_client.send_prompt_to_claude(prompt_content)
     
+
+    LOGGER.debug("Finished execution")
 
 
 if __name__ == "__main__":

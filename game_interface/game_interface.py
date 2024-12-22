@@ -1,8 +1,12 @@
+import base64
+from io import BytesIO
 import pyautogui
 import os
+from simple_logger.logger import SimpleLogger
 
 # _all_ = ['take_screenshot', 'press_key', 'hold_key', 'move_mouse', 'click_mouse']
 
+LOGGER = SimpleLogger(__name__, log_file="game_interface.log")
 
 def take_screenshot(filename="screenshot.png"):
     """Takes a screenshot of the screen and saves it to the specified filename."""
@@ -12,7 +16,17 @@ def take_screenshot(filename="screenshot.png"):
     if not os.path.exists("output"):
         os.makedirs("output")
     screenshot.save("output/"+filename)
-    print(f"Screenshot saved as {filename}")
+    LOGGER.debug(f"Screenshot saved as {filename}")
+
+      # Convert PIL Image to base64 string
+    buffered = BytesIO()
+    screenshot.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+
+    # Return the image in a content[] block for returning to Claude
+    content = {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_str}}
+    
+    return content
 
 def press_key(key):
     """Simulates pressing and releasing a key."""
