@@ -6,6 +6,8 @@ from simple_logger.logger import SimpleLogger
 
 LOGGER = SimpleLogger(__name__, log_file="main.log")
 
+MAX_STEPS = 25
+
 def main():
     model_input_choices = [
         ["0-0", "dev-0", "gemini", "free"],
@@ -71,18 +73,21 @@ def main():
     LOGGER.debug(f"Client model: {ai_client.model}")
 
 
-    
-    prompt = """
-             This first run is a test run. You should take a screenshot of the game and describe the game state.
-             When you recieve the image, give your thoughts and understanding of it.
-             Once that is done, finish flying.
+    prompt = f"""\
+             We are in the training grounds to test our flight abilities. \
+             You will be responsible for evaluating the state when necessary and performing actions based on the tools provided. \
+             You are given {MAX_STEPS} steps maximum to work with in this stage. Let's begin by confirming knowledge of the controls. \
+             Engage the enemy aircraft and use any means necessary to eliminate it.
+             Begin by taking a screenshot and responding with a command. \
+             When you are finished, complete the mission. \
+             You should use a tool with each response. \
              """
     
     next_tool_set = ai_client.send_prompt_to_claude(prompt)
     LOGGER.debug(f"Claude's tool response: {next_tool_set}")
 
     # While we should continue, execute tools and re prompt claude
-    loop_limit = 3
+    loop_limit = MAX_STEPS
     for _ in range(loop_limit + 1):
         if not ai_client.to_continue_flying():
             break
@@ -93,6 +98,20 @@ def main():
         prompt_content = []
         for result in execution_results:
             prompt_content.append(result)
+
+        # If there is no content added, a tool wasn't used.
+        # Claude should always use a tool. If the objective is fulfilled it should be stop_flying.
+        # If it is just waiting it should be no-op
+        if prompt_content == []:
+            affirming_response = {
+                "type": "text",
+                "text": """\
+                           You must use a tool in your response.\
+                           If you have completed the mission/objective, use the stop_flying tool.\
+                           If you are waiting to act on something, use no-op. You should succintly explain what you are waiting to make a decision on.\
+                           """
+            }
+            prompt_content.append(affirming_response)
         
         LOGGER.debug(f"Prompt content: {prompt_content}")
         ai_client.send_prompt_to_claude(prompt_content)
