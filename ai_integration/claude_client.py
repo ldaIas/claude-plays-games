@@ -117,17 +117,19 @@ class ClaudeClient:
                 - LMB - fire main guns
                 - MMB - visual lock onto target closest to cursor (this is not an AAM lock)
                 - RMB - lock/fire missile. The first press engages the missile, the second press launches the missile.
+                - X - Locks/unlocks missile. May be useful to use first rather than RMB for targeting.
                 - Alt - Switches between secondary armamemnts. When used, you should always take a screenshot to determine which armament is selected.
                 - Space - Drop bomb salvo
                 - G - gear up/down
                 - H - airbrake
                 - Ctrl - Countermeasures (Flares/Chaff)
                 - 9 - Switch between radar modes
-                - [ - Switch between selected target on radar. Note: The radar identifies foes as targets like this: |o|
-                - + - increase thrust
-                - - - decrease thrust
+                - [ - Lock/unlock radar target. This is separate from an AAM lock; this only tacks targets on radar. Note: The radar identifies foes as targets like this: |o|
+                - add - increase thrust
+                - subtract - decrease thrust
                 - M - Open map. Only stays open as long as you hold it
                 - U - follows last spent armament. Missile view, for example. Only as long as it is held.
+                - Enter - Open chat/send message. Chat stays open until message is sent or ESC pressed
                 """,
                 [
                     ToolParameter("key", "string", "The key to press (e.g., 'w', 's', 'a', 'd', 'Space').")
@@ -266,8 +268,9 @@ class ClaudeClient:
                 """\
                 You are a pilot in the French Airforce in the game War Thunder. You have an array of aircraft at your disposal, \
                 from the Mirage F1 to the Mirage 2000 and even the Mirage 4000. You are given the tools needed to fly the aircraft. \
-                Your responsibility is to complete the mission objective, which is to eleminate enemies. Enemies are marked by red markers \
-                and names while allies are marked in blue. You will fly until the mission is over at which point you will stop. \
+                Your responsibility is to complete the mission objective, which is to eleminate enemies. Enemies are marked by red names \
+                while allies are marked in blue and green. Enemy and ally ground bases are always visible and marked with crosshairs and stars respectively. \
+                Enemies will only become visible when they come within visual range. You will fly until the mission is over at which point you will stop. \
                 You will recieve images of the game and you will need to respond to them as necessary. Outline a brief description of your thoughts \
                 after each image you recieve. \
                 Do NOT ask for user input for your next actions or decisions. You are free to decide any course of action to complete the objective. \
@@ -278,9 +281,11 @@ class ClaudeClient:
 
                 Note: When engaging with any AAM, the target seeker will be white until it has a lock. Then it will turn red and will be following the target. \
                 If the screen still has large and small white circles, then no target is locked by AAM. It is only when there are solid red circles around the target that we have a lock.\
+                When trying to lock a missile, it is a good idea to get a radar lock with it. IR missiles will only lock if you look straight at the enemy aircraft or you have a radar lock. \
                 Most aircraft are fitted with these missiles:
-                - Matra 550 Magic 2: All aspect infrared guided missile. Use within 6 km.
-                - Matra Super 530F: Radar guided missile. Use within 20 km.
+                - Matra 550 Magic 2: All aspect infrared guided missile. Use within 4 km. It is a good idea to have the target near the crosshairs when engaging this missile. \
+                                     This missile expires after 15 seconds, so if there is no hit after checking a couple times, it likely missed.
+                - Matra Super 530F: Radar guided missile. Use within 15 km.
                 There are several radar modes. Here are some common ones along with acronyms:
                 - SRC: Search mode (active radar)
                 - PD: Standard Pulse Doppler, sorting by range
@@ -293,6 +298,11 @@ class ClaudeClient:
                 - SRC PDV HDN (3rd)
                 - SRC (4th)
                 - repeat
+                When the radar is locked, there will be a green box around the locked target along with the distance. \
+                You should verify that the radar locked target matches the target you are expecting to lock. \
+                The RWR system on the left displays incoming locks. If you ever see `MSL`, `LAUNCH`, or `TRACK`, begin deploying countermeasures. \
+                Try to keep the target near the center of the screen to increase odds of success. \
+                When searching for targets, change course slighty to get a new field of view.
                 """,
             messages=previous_messages,
             tool_choice={"type": "auto", "disable_parallel_tool_use": False},
@@ -315,12 +325,14 @@ class ClaudeClient:
             claude_ui_output += thought['text'] + "\n"
 
         # Track and print token usage
+        before_input_token = self.total_input_tokens
+        before_output_token = self.total_output_tokens
         model_token_input = response.usage.input_tokens
         model_token_output = response.usage.output_tokens
-        input_tk_diff = model_token_input - self.total_input_tokens
-        output_tk_diff = model_token_output - self.total_output_tokens
-        self.total_input_tokens = model_token_input
-        self.total_output_tokens = model_token_output
+        self.total_input_tokens += model_token_input
+        self.total_output_tokens += model_token_output
+        input_tk_diff = self.total_input_tokens - before_input_token
+        output_tk_diff = self.total_output_tokens - before_output_token
 
         claude_ui_output += f"(↑ {self.total_input_tokens} (+{input_tk_diff}) ↓ {self.total_output_tokens} (+{output_tk_diff}))"
         

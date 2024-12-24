@@ -6,7 +6,7 @@ from simple_logger.logger import SimpleLogger
 
 LOGGER = SimpleLogger(__name__, log_file="main.log")
 
-MAX_STEPS = 25
+MAX_STEPS = 40
 
 def main():
     model_input_choices = [
@@ -74,10 +74,13 @@ def main():
 
 
     prompt = f"""\
-             We are in the training grounds to test our flight abilities. \
+             We are in the battle grounds to engage with the enemy. \
              You will be responsible for evaluating the state when necessary and performing actions based on the tools provided. \
-             You are given {MAX_STEPS} steps maximum to work with in this stage. Let's begin by confirming knowledge of the controls. \
-             Engage the enemy aircraft and use any means necessary to eliminate it. There are several enemies, search and destroy at least two.
+             You are given {MAX_STEPS} steps maximum to work with in this stage. \
+             You should begin each mission by talking in chat, introducing yourself (give yourself a name), and say powered by Claude. \
+             You will start on the runway so you must first takeoff. Remeber to pull up and use the mouse to aim the nose up before getting into combat. \
+             You start surrounded by allies, as indicated by their blue names. Do not attempt to lock onto allies. \
+             Engage the enemy aircraft and use any means necessary to eliminate it. There are several enemies, search and destroy at least two. \
              Begin by taking a screenshot and responding with a command. \
              When you are finished, complete the mission. \
              You should use a tool with each response. \

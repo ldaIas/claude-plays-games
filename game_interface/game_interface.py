@@ -76,6 +76,9 @@ def press_key(key):
         pydirectinput.press(key)
     LOGGER.debug(f"Pressed key '{key}'")
 
+    # Mouseup event bc for some reason war thunder holds down guns and missiles when clicking
+    pyautogui.mouseUp()
+
     content = {
         "type": "tool_result",
         "content": f"Pressed key '{key}'"
@@ -121,14 +124,6 @@ def move_mouse(x, y, duration=0.1):
 # Main script for testing inputs
 # Uncomment the line above the logger import to run
 if __name__ == "__main__":
-    # Example usage
-    # take_screenshot()
-    # press_key('a')
-    # hold_key('a', 2)
-    # move_mouse(100, 100)
-    # click_mouse('left')
-    # click_mouse('right')
-    # click_mouse('middle')
-    # click_mouse('invalid_button')
+    key = input("input example key")
     pyautogui.sleep(1.5)
-    print(move_mouse(960, 0))
+    print(hold_key(key))
