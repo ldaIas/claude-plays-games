@@ -8,7 +8,7 @@ import sys
 from functools import partial
 
 # Uncomment for testing in main script
-#sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from simple_logger.logger import SimpleLogger
 

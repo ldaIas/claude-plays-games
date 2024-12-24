@@ -88,6 +88,9 @@ class ClaudeClient:
         self.toolset_results = []
         self.continue_flying = True
 
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+
         self.model = model
         self.api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
@@ -124,6 +127,7 @@ class ClaudeClient:
                 - + - increase thrust
                 - - - decrease thrust
                 - M - Open map. Only stays open as long as you hold it
+                - U - follows last spent armament. Missile view, for example. Only as long as it is held.
                 """,
                 [
                     ToolParameter("key", "string", "The key to press (e.g., 'w', 's', 'a', 'd', 'Space').")
@@ -274,6 +278,9 @@ class ClaudeClient:
 
                 Note: When engaging with any AAM, the target seeker will be white until it has a lock. Then it will turn red and will be following the target. \
                 If the screen still has large and small white circles, then no target is locked by AAM. It is only when there are solid red circles around the target that we have a lock.\
+                Most aircraft are fitted with these missiles:
+                - Matra 550 Magic 2: All aspect infrared guided missile. Use within 6 km.
+                - Matra Super 530F: Radar guided missile. Use within 20 km.
                 There are several radar modes. Here are some common ones along with acronyms:
                 - SRC: Search mode (active radar)
                 - PD: Standard Pulse Doppler, sorting by range
@@ -302,7 +309,22 @@ class ClaudeClient:
         self.tool_thoughts = [cont.model_dump() for cont in response.content if cont.model_dump()['type'] == 'text']
         if (len(self.tool_thoughts)) == 0:
             self.tool_thoughts = [{"text": "<no thoughts for this action>"}]
-        print_claude_response(self.tool_thoughts[0]['text'])
+
+        claude_ui_output = ""
+        for thought in self.tool_thoughts:
+            claude_ui_output += thought['text'] + "\n"
+
+        # Track and print token usage
+        model_token_input = response.usage.input_tokens
+        model_token_output = response.usage.output_tokens
+        input_tk_diff = model_token_input - self.total_input_tokens
+        output_tk_diff = model_token_output - self.total_output_tokens
+        self.total_input_tokens = model_token_input
+        self.total_output_tokens = model_token_output
+
+        claude_ui_output += f"(↑ {self.total_input_tokens} (+{input_tk_diff}) ↓ {self.total_output_tokens} (+{output_tk_diff}))"
+        
+        print_claude_response(claude_ui_output)
 
         LOGGER.debug(f"Next toolset: {self.next_toolset}")
         return self.next_toolset

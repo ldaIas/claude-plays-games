@@ -77,7 +77,7 @@ def main():
              We are in the training grounds to test our flight abilities. \
              You will be responsible for evaluating the state when necessary and performing actions based on the tools provided. \
              You are given {MAX_STEPS} steps maximum to work with in this stage. Let's begin by confirming knowledge of the controls. \
-             Engage the enemy aircraft and use any means necessary to eliminate it.
+             Engage the enemy aircraft and use any means necessary to eliminate it. There are several enemies, search and destroy at least two.
              Begin by taking a screenshot and responding with a command. \
              When you are finished, complete the mission. \
              You should use a tool with each response. \
