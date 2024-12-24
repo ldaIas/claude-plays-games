@@ -21,7 +21,7 @@ class SimpleLogger:
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
         if log_file:
-            file_handler = logging.FileHandler(log_file)
+            file_handler = logging.FileHandler(log_file, encoding='UTF-8')
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
         else:

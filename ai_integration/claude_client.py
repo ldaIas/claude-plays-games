@@ -88,6 +88,8 @@ class ClaudeClient:
         self.toolset_results = []
         self.continue_flying = True
 
+        self.current_situation = {}
+
         self.total_input_tokens = 0
         self.total_output_tokens = 0
 
@@ -112,10 +114,11 @@ class ClaudeClient:
                 - Down - pan camera down
                 - Left - pan camera left
                 - Right - pan camera right
-                - LMB - select
+                - LMB - select. This can be used on units, provinces, or actions in menus.
                 - RMB - (With unit selected: move to location) / open diplomacy of nation clicked over
                 - Space - Pause/unpase (good to do when you need info)
-                - F1 - Opens country menu (tabs for court, economy, trade, military, etc)
+                - F1 - Opens country menu (tabs for court, economy, trade, military, etc). Note: When you press F1, the last open view pops up. You then press any of the following buttons. \
+                If you press F1 + 1 then F1 + 2, you will actually open then close the menu. Instead you should do F1 + 1, then 2, then press F1 or Esc to close.\
                 - F1 + 1 - Opens the courtly view
                 - F1 + 2 - Opens the government view
                 - F1 + 3 - Opens diplomacy of last interacted country. In this view, z will take you to your own country. If on your own country, z will take you to the `release subject` view.
@@ -152,7 +155,10 @@ class ClaudeClient:
                 - b + 0 + g - dynastic actions. Available royal marriages and throne claims
                 - b + 0 + z - economy actions. Interactions with other countries like embargos or subsidies
                 - F7 - Sejm view. This is where we can interact with our internal government
-
+                - Enter - accept current pop-up. Note: Only works for diplomatic pop ups, not events or flavor (pop ups with a drawing and flavor text)
+                - c - confirm action. Used when making allies, declaring wars, etc.
+                - z - cancel action. Used when making allies, wars, etc.
+                - Esc - closes any view open. If pressed while none open, opens menu. Esc again to close menu.
                 """,
                 [
                     ToolParameter("key", "string", "The key to press (e.g., 'w', 's', 'a', 'd', 'Space').")
@@ -174,6 +180,7 @@ class ClaudeClient:
                 """\
                 Moves the mouse cursor to specific coordinates on the screen. This is relative to the top left of the screen, so an input of (0,0) would point the mouse at the top left corner. \
                 The width of the screen is 1920 pixels and the height is 1080 pixels, so the maximum and minimum values are (0, 1920) and (0, 1080) respectively.\
+                Note: Moving the mouse to the edge of the screen will start panning the camera in that direction. You probably shouldn't go to the screen limits when moving the mouse. \
                 """,
                 [
                     ToolParameter("x", "integer", "The x-coordinate to move the mouse to."),
@@ -211,7 +218,25 @@ class ClaudeClient:
             "type": "tool_result",
             "content": "no-op"
         }
-        
+    
+    def updateAndGetSituation(self, input={}):
+        """
+        Updates the situation log as seen fit by the model.
+        """
+        if input != {}:
+            for (k, v) in input:
+                self.current_situation[k] = v
+
+        return {
+            "type": "text",
+            "text": f"New situation log: {self.getSituationAsContent()}"
+        }
+    
+    def getSituationAsContent(self):
+        situation_prompt = ""
+        for (key, value) in self.current_situation:
+            situation_prompt += f"{key}: {value}\n"
+        return situation_prompt    
 
     def execute_tools(self):
         tool_map = {
@@ -220,7 +245,8 @@ class ClaudeClient:
             "hold_key": interface.hold_key,
             "move_mouse": interface.move_mouse,
             "stop_game": self.stop_game,
-            "no_op": self.no_op
+            "no_op": self.no_op,
+            "updateAndGetSituation": self.updateAndGetSituation
         }
 
         threads = []
@@ -283,6 +309,9 @@ class ClaudeClient:
 
         LOGGER.info(f"Prompting claude with messages: {previous_messages}")
 
+        # Add the situation log to the prompt in a new list to send up. Don't want want to cache the sit log every time
+        prompt_to_send = previous_messages + [{ "role": "user", "content": [{"type": "text", "text": f"Situation log: {self.getSituationAsContent()}"}]}]        
+
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=1024,
@@ -297,9 +326,19 @@ class ClaudeClient:
                 
                 Units you have control over are marked with your flag and a green marker with the unit strength.
                 Ally/friendly units are marked in blue, enemy units are marked in red, and neutral units in gray.
+                The game starts paused. If you press space, it will unpause and being playing.
 
+                You are given access to a "situation log" which represents a key-value pair of information you would like to store about the situation. \
+                You should use this to store info about the current game state so that you do not need to repetitively check information. \
+                An example log would be: {"military": "I have about 22k units and no generals. My military tech is level 3."}
+                You will then recieve info as: "Situation log: "military": "I have about 22k units and no generals. My military tech is level 3.", ... \
+                When attempting to click on a country, you should try to pan the camera to get it in the center of the screen so you can just move the mouse \
+                to the center and click.
+
+                When taking screenshots, it is a good idea to do so independently of other tools and wait for the result to process. If you are working with a screenshot \
+                that you don't think represents what you asked for, wait a second (no_op) before trying again. \
                 """,
-            messages=previous_messages,
+            messages=prompt_to_send,
             tool_choice={"type": "auto", "disable_parallel_tool_use": False},
             tools=self.get_tool_descriptions()
         )
