@@ -74,16 +74,11 @@ def main():
 
 
     prompt = f"""\
-             We are in the battle grounds to engage with the enemy. \
-             You will be responsible for evaluating the state when necessary and performing actions based on the tools provided. \
-             You are given {MAX_STEPS} steps maximum to work with in this stage. \
-             You should begin each mission by talking in chat, introducing yourself (give yourself a name), and say powered by Claude. \
-             You will start on the runway so you must first takeoff. Remeber to pull up and use the mouse to aim the nose up before getting into combat. \
-             You start surrounded by allies, as indicated by their blue names. Do not attempt to lock onto allies. \
-             Engage the enemy aircraft and use any means necessary to eliminate it. There are several enemies, search and destroy at least two. \
-             Begin by taking a screenshot and responding with a command. \
-             When you are finished, complete the mission. \
-             You should use a tool with each response. \
+             We are in the opening stages of the game and we need to start making decisions. \
+             Let's start by giving out at least one estate privilage as well as making an alliance. \
+             Given that we are poland lets wait for the succession of Jagellion to happen before making major plays \
+             You are given {MAX_STEPS} steps maximum to work with. \
+             Once you complete the first steps, you are free to play the game as you wish.
              """
     
     next_tool_set = ai_client.send_prompt_to_claude(prompt)
@@ -110,7 +105,7 @@ def main():
                 "type": "text",
                 "text": """\
                            You must use a tool in your response.\
-                           If you have completed the mission/objective, use the stop_flying tool.\
+                           If you have completed the mission/objective, use the stop_game tool.\
                            If you are waiting to act on something, use no-op. You should succintly explain what you are waiting to make a decision on.\
                            """
             }

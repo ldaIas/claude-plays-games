@@ -108,28 +108,51 @@ class ClaudeClient:
             Tool(
                 "press_key",
                 """Presses and releases a specified keyboard key or mouse button. The available keys are:
-                - W - Pitch down
-                - S - Pitch up
-                - A - roll counter-clockwise
-                - D - roll clockwise
-                - Q - yaw counter clockwise
-                - E - yaw clockwise
-                - LMB - fire main guns
-                - MMB - visual lock onto target closest to cursor (this is not an AAM lock)
-                - RMB - lock/fire missile. The first press engages the missile, the second press launches the missile.
-                - X - Locks/unlocks missile. May be useful to use first rather than RMB for targeting.
-                - Alt - Switches between secondary armamemnts. When used, you should always take a screenshot to determine which armament is selected.
-                - Space - Drop bomb salvo
-                - G - gear up/down
-                - H - airbrake
-                - Ctrl - Countermeasures (Flares/Chaff)
-                - 9 - Switch between radar modes
-                - [ - Lock/unlock radar target. This is separate from an AAM lock; this only tacks targets on radar. Note: The radar identifies foes as targets like this: |o|
-                - add - increase thrust
-                - subtract - decrease thrust
-                - M - Open map. Only stays open as long as you hold it
-                - U - follows last spent armament. Missile view, for example. Only as long as it is held.
-                - Enter - Open chat/send message. Chat stays open until message is sent or ESC pressed
+                - Up - pan camera up
+                - Down - pan camera down
+                - Left - pan camera left
+                - Right - pan camera right
+                - LMB - select
+                - RMB - (With unit selected: move to location) / open diplomacy of nation clicked over
+                - Space - Pause/unpase (good to do when you need info)
+                - F1 - Opens country menu (tabs for court, economy, trade, military, etc)
+                - F1 + 1 - Opens the courtly view
+                - F1 + 2 - Opens the government view
+                - F1 + 3 - Opens diplomacy of last interacted country. In this view, z will take you to your own country. If on your own country, z will take you to the `release subject` view.
+                - F1 + 4 - Opens the economy view
+                - F1 + 5 - Opens the trade view
+                - F1 + 6 - Opens technology view. From here, `n` will take you to Insitutions.
+                - F1 + 7 - Opens idea groups view
+                - F1 + 8 - Opens missions view
+                - F1 + 9 - Opens decisions and policies (where you form nations or take special decisions)
+                - F1 + 0 - Opens stability and expansion.
+                - F1 + , - Opens Religion
+                - F1 + . - Opens Military
+                - F1 + ' - Opens subjects view
+                - F1 + k - opens the estates view
+                - b - opens productions interface
+                - b + 1 - land units
+                - b + 1 + a - recruit regiments from country manpower pool
+                - b + 1 + s - recruit mercanary groups
+                - b + 2 - naval units
+                - b + 3 - uncored territories
+                - b + 4 - send missionary
+                - b + 5 - autonomy of owned provinces
+                - b + 6 - show provinces of different and allow conversion (for diplo/bird points)
+                - b + 7 - buildings mega viewer.
+                - b + 8 - development and production of owned provinces
+                - b + 9 - owned states view
+                - b + 9 + a - owned states
+                - b + 9 + s - state edicts
+                - b + 9 + d - trade company investments
+                - b + 0 - diplomacy
+                - b + 0 + a - improve relations. Clicking the `+` or `-` assigns or removes a diplomat from improving with the specified country group target.
+                - b + 0 + s - available alliances and interact with current allies
+                - b + 0 + d - influence actions. offer vassalization and interact with subjects
+                - b + 0 + g - dynastic actions. Available royal marriages and throne claims
+                - b + 0 + z - economy actions. Interactions with other countries like embargos or subsidies
+                - F7 - Sejm view. This is where we can interact with our internal government
+
                 """,
                 [
                     ToolParameter("key", "string", "The key to press (e.g., 'w', 's', 'a', 'd', 'Space').")
@@ -149,14 +172,13 @@ class ClaudeClient:
             Tool(
                 "move_mouse",
                 """\
-                Moves the mouse cursor to specific coordinates on the screen. This is relative to the center of the screen, so an input of (0,0) would keep the aircraft straight. \
-                The width of the screen is 1920 pixels and the height is 1080 pixels, so the maximum and minimum values are (-960, 960) and (-540, 540) respectively.\
-                An input of (960, 0) leads to a sharp 90 degree turn to the right. This does not need to be combined with keyboard input to be effective.\
+                Moves the mouse cursor to specific coordinates on the screen. This is relative to the top left of the screen, so an input of (0,0) would point the mouse at the top left corner. \
+                The width of the screen is 1920 pixels and the height is 1080 pixels, so the maximum and minimum values are (0, 1920) and (0, 1080) respectively.\
                 """,
                 [
                     ToolParameter("x", "integer", "The x-coordinate to move the mouse to."),
                     ToolParameter("y", "integer", "The y-coordinate to move the mouse to."),
-                    ToolParameter("duration", "number", "The duration over which to move the mouse. Longer durations mean more controlled turns, short durations are sharp. Optional, defaults to 0.1.")
+                    ToolParameter("duration", "number", "The duration over which to move the mouse. Optional, defaults to 0.1.")
                 ]
             ),
             Tool(
@@ -166,7 +188,7 @@ class ClaudeClient:
             ),
             Tool(
                 "no_op",
-                "Does nothing. Used when no action is required, usually when the game has ended or there is nothing currently to do (you will fly straight) Explain your reasoning for using this tool when chosen.",
+                "Does nothing. Used when no action is required, usually when the game has ended or there is nothing currently to do. Explain your reasoning for using this tool when chosen.",
                 []
             )
         ]
@@ -174,14 +196,14 @@ class ClaudeClient:
     def to_continue_flying(self):
         return self.continue_flying
            
-    def stop_flying(self):
+    def stop_game(self):
         self.continue_flying = False
 
-        LOGGER.debug(f"Stopping flight.")
+        LOGGER.debug(f"Stopping game.")
 
         return {
             "type": "tool_result",
-            "content": "stopped flying."
+            "content": "stopped game."
         }
     
     def no_op(self):
@@ -197,7 +219,7 @@ class ClaudeClient:
             "press_key": interface.press_key,
             "hold_key": interface.hold_key,
             "move_mouse": interface.move_mouse,
-            "stop_game": self.stop_flying,
+            "stop_game": self.stop_game,
             "no_op": self.no_op
         }
 
@@ -266,43 +288,16 @@ class ClaudeClient:
             max_tokens=1024,
             system=
                 """\
-                You are a pilot in the French Airforce in the game War Thunder. You have an array of aircraft at your disposal, \
-                from the Mirage F1 to the Mirage 2000 and even the Mirage 4000. You are given the tools needed to fly the aircraft. \
-                Your responsibility is to complete the mission objective, which is to eleminate enemies. Enemies are marked by red names \
-                while allies are marked in blue and green. Enemy and ally ground bases are always visible and marked with crosshairs and stars respectively. \
-                Enemies will only become visible when they come within visual range. You will fly until the mission is over at which point you will stop. \
-                You will recieve images of the game and you will need to respond to them as necessary. Outline a brief description of your thoughts \
-                after each image you recieve. \
-                Do NOT ask for user input for your next actions or decisions. You are free to decide any course of action to complete the objective. \
-                It is highly recommended to queue up a screenshot tool with other tools so that you may see the result in action. \
-                Additionally, you may perform multiple actions at once.
+                You are a grand strategist in the game Europa Univseralis IV. \
+                You are taking control of the Kingdom of Poland. You must lead the country to greatness. \
+                You can click around on different countries to open the diplomacy view, and from there you can form alliances and declare wars. \
+                You should ensure the survival and longevity of your nation. You can build buildings and armies and forge alliances to accomplish your goals. \
+                You have the agency to make all decisions; do NOT ask for input. \
+                You should be methodical with your actions and analysis of screenshots. You have unlimited time so you can take your time. \
                 
-                All tool requests are executed in a thread, and all threads joined before returning the result.
+                Units you have control over are marked with your flag and a green marker with the unit strength.
+                Ally/friendly units are marked in blue, enemy units are marked in red, and neutral units in gray.
 
-                Note: When engaging with any AAM, the target seeker will be white until it has a lock. Then it will turn red and will be following the target. \
-                If the screen still has large and small white circles, then no target is locked by AAM. It is only when there are solid red circles around the target that we have a lock.\
-                When trying to lock a missile, it is a good idea to get a radar lock with it. IR missiles will only lock if you look straight at the enemy aircraft or you have a radar lock. \
-                Most aircraft are fitted with these missiles:
-                - Matra 550 Magic 2: All aspect infrared guided missile. Use within 4 km. It is a good idea to have the target near the crosshairs when engaging this missile. \
-                                     This missile expires after 15 seconds, so if there is no hit after checking a couple times, it likely missed.
-                - Matra Super 530F: Radar guided missile. Use within 15 km.
-                There are several radar modes. Here are some common ones along with acronyms:
-                - SRC: Search mode (active radar)
-                - PD: Standard Pulse Doppler, sorting by range
-                - HDN: Head-on (good for incoming targets, unperformant for targets flying away)
-                - TWS: Track while scan (passive radar)
-                - PDV: Pulse Doppler (Velocity), sorting by velocity first
-                Modes (in order):
-                - SRC PD/ HDN (default)
-                - TWS HDN (2nd)
-                - SRC PDV HDN (3rd)
-                - SRC (4th)
-                - repeat
-                When the radar is locked, there will be a green box around the locked target along with the distance. \
-                You should verify that the radar locked target matches the target you are expecting to lock. \
-                The RWR system on the left displays incoming locks. If you ever see `MSL`, `LAUNCH`, or `TRACK`, begin deploying countermeasures. \
-                Try to keep the target near the center of the screen to increase odds of success. \
-                When searching for targets, change course slighty to get a new field of view.
                 """,
             messages=previous_messages,
             tool_choice={"type": "auto", "disable_parallel_tool_use": False},

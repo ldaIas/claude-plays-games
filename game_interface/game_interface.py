@@ -112,7 +112,7 @@ def hold_key(key, duration=1):
 
 def move_mouse(x, y, duration=0.1):
     """Moves the mouse cursor to the specified coordinates."""
-    pydirectinput.moveRel(x, y, duration=duration, relative=True)
+    pydirectinput.moveTo(x, y, duration=duration, relative=True)
     LOGGER.debug(f"Moved mouse to: {x}, {y}")
 
     return {
@@ -124,6 +124,6 @@ def move_mouse(x, y, duration=0.1):
 # Main script for testing inputs
 # Uncomment the line above the logger import to run
 if __name__ == "__main__":
-    key = input("input example key")
+    # key = input("input example key")
     pyautogui.sleep(1.5)
-    print(hold_key(key))
+    print(move_mouse(0, 0))
